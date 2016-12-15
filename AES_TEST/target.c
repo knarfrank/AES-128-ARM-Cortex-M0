@@ -182,24 +182,13 @@ static const uint8_t Rcon[255] = {
   0x61, 0xc2, 0x9f, 0x25, 0x4a, 0x94, 0x33, 0x66, 0xcc, 0x83, 0x1d, 0x3a, 0x74, 0xe8, 0xcb  };
 
 
-/*****************************************************************************/
-/* Private functions:                                                        */
-/*****************************************************************************/
-
-static uint8_t getSBoxInvert(uint8_t num)
-{
-  return rsbox[num];
-}
-
 // This function produces Nb(Nr+1) round keys. The round keys are used in each round to decrypt the states. 
-static void KeyExpansion(void)
-{
+static void KeyExpansion(void) {
   uint32_t i, j, k;
   uint8_t tempa[4]; // Used for the column/row operations
   
   // The first round key is the key itself.
-  for(i = 0; i < Nk; ++i)
-  {
+  for(i = 0; i < Nk; ++i) {
     RoundKey[(i * 4) + 0] = Key[(i * 4) + 0];
     RoundKey[(i * 4) + 1] = Key[(i * 4) + 1];
     RoundKey[(i * 4) + 2] = Key[(i * 4) + 2];
@@ -324,8 +313,7 @@ static void MixColumns(void) {
 
 // Multiply is used to multiply numbers in the field GF(2^8)
 #if MULTIPLY_AS_A_FUNCTION
-static uint8_t Multiply(uint8_t x, uint8_t y)
-{
+static uint8_t Multiply(uint8_t x, uint8_t y) {
   return (((y & 1) * x) ^
        ((y>>1 & 1) * xtime(x)) ^
        ((y>>2 & 1) * xtime(xtime(x))) ^
@@ -345,12 +333,10 @@ static uint8_t Multiply(uint8_t x, uint8_t y)
 // MixColumns function mixes the columns of the state matrix.
 // The method used to multiply may be difficult to understand for the inexperienced.
 // Please use the references to gain more information.
-static void InvMixColumns(void)
-{
+static void InvMixColumns(void) {
   int i;
   uint8_t a,b,c,d;
-  for(i=0;i<4;++i)
-  { 
+  for(i=0;i<4;++i) { 
     a = (*state)[i][0];
     b = (*state)[i][1];
     c = (*state)[i][2];
@@ -366,20 +352,16 @@ static void InvMixColumns(void)
 
 // The SubBytes Function Substitutes the values in the
 // state matrix with values in an S-box.
-static void InvSubBytes(void)
-{
+static void InvSubBytes(void) {
   uint8_t i,j;
-  for(i=0;i<4;++i)
-  {
-    for(j=0;j<4;++j)
-    {
-      (*state)[j][i] = getSBoxInvert((*state)[j][i]);
+  for(i=0;i<4;++i) {
+    for(j=0;j<4;++j) {
+      (*state)[j][i] = rsbox[(*state)[j][i]];
     }
   }
 }
 
-static void InvShiftRows(void)
-{
+static void InvShiftRows(void) {
   uint8_t temp;
 
   // Rotate first row 1 columns to right  
@@ -408,8 +390,7 @@ static void InvShiftRows(void)
 
 
 // Cipher is the main function that encrypts the PlainText.
-static void Cipher(void)
-{
+static void Cipher(void) {
   uint8_t round = 0;
 
   // Add the First round key to the state before starting the rounds.
@@ -418,8 +399,7 @@ static void Cipher(void)
   // There will be Nr rounds.
   // The first Nr-1 rounds are identical.
   // These Nr-1 rounds are executed in the loop below.
-  for(round = 1; round < Nr; ++round)
-  {
+  for(round = 1; round < Nr; ++round) {
     SubBytes();
     ShiftRows();
     MixColumns();
@@ -433,9 +413,8 @@ static void Cipher(void)
   AddRoundKey(Nr);
 }
 
-static void InvCipher(void)
-{
-  uint8_t round=0;
+static void InvCipher(void) {
+  uint8_t round = 0;
 
   // Add the First round key to the state before starting the rounds.
   AddRoundKey(Nr); 
@@ -443,8 +422,7 @@ static void InvCipher(void)
   // There will be Nr rounds.
   // The first Nr-1 rounds are identical.
   // These Nr-1 rounds are executed in the loop below.
-  for(round=Nr-1;round>0;round--)
-  {
+  for(round=Nr-1; round > 0; round--) {
     InvShiftRows();
     InvSubBytes();
     AddRoundKey(round);
@@ -458,19 +436,16 @@ static void InvCipher(void)
   AddRoundKey(0);
 }
 
-static void BlockCopy(uint8_t* output, uint8_t* input)
-{
+static void BlockCopy(uint8_t* output, uint8_t* input) {
   uint8_t i;
-  for (i=0;i<KEYLEN;++i)
-  {
+  for (i=0;i<KEYLEN;++i) {
     output[i] = input[i];
   }
 }
 
 
 
-void AES128_ECB_encrypt(uint8_t* input, const uint8_t* key, uint8_t* output)
-{
+void AES128_ECB_encrypt(uint8_t* input, const uint8_t* key, uint8_t* output) {
   // Copy input to output, and work in-memory on output
   BlockCopy(output, input);
   state = (state_t*)output;
@@ -482,8 +457,7 @@ void AES128_ECB_encrypt(uint8_t* input, const uint8_t* key, uint8_t* output)
   Cipher();
 }
 
-void AES128_ECB_decrypt(uint8_t* input, const uint8_t* key, uint8_t *output)
-{
+void AES128_ECB_decrypt(uint8_t* input, const uint8_t* key, uint8_t *output) {
   // Copy input to output, and work in-memory on output
   BlockCopy(output, input);
   state = (state_t*)output;
