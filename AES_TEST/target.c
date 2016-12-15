@@ -185,10 +185,6 @@ static const uint8_t Rcon[255] = {
 /*****************************************************************************/
 /* Private functions:                                                        */
 /*****************************************************************************/
-static uint8_t getSBoxValue(uint8_t num)
-{
-  return sbox[num];
-}
 
 static uint8_t getSBoxInvert(uint8_t num)
 {
@@ -211,14 +207,11 @@ static void KeyExpansion(void)
   }
 
   // All other round keys are found from the previous round keys.
-  for(; (i < (Nb * (Nr + 1))); ++i)
-  {
-    for(j = 0; j < 4; ++j)
-    {
+  for(; (i < (Nb * (Nr + 1))); ++i) {
+    for(j = 0; j < 4; ++j) {
       tempa[j]=RoundKey[(i-1) * 4 + j];
     }
-    if (i % Nk == 0)
-    {
+    if (i % Nk == 0) {
       // This function rotates the 4 bytes in a word to the left once.
       // [a0,a1,a2,a3] becomes [a1,a2,a3,a0]
 
@@ -236,22 +229,20 @@ static void KeyExpansion(void)
 
       // Function Subword()
       {
-        tempa[0] = getSBoxValue(tempa[0]);
-        tempa[1] = getSBoxValue(tempa[1]);
-        tempa[2] = getSBoxValue(tempa[2]);
-        tempa[3] = getSBoxValue(tempa[3]);
+        tempa[0] = sbox[tempa[0]];
+        tempa[1] = sbox[tempa[1]];
+        tempa[2] = sbox[tempa[2]];
+        tempa[3] = sbox[tempa[3]];
       }
 
       tempa[0] =  tempa[0] ^ Rcon[i/Nk];
-    }
-    else if (Nk > 6 && i % Nk == 4)
-    {
+    } else if (Nk > 6 && i % Nk == 4) {
       // Function Subword()
       {
-        tempa[0] = getSBoxValue(tempa[0]);
-        tempa[1] = getSBoxValue(tempa[1]);
-        tempa[2] = getSBoxValue(tempa[2]);
-        tempa[3] = getSBoxValue(tempa[3]);
+        tempa[0] = sbox[tempa[0]];
+        tempa[1] = sbox[tempa[1]];
+        tempa[2] = sbox[tempa[2]];
+        tempa[3] = sbox[tempa[3]];
       }
     }
     RoundKey[i * 4 + 0] = RoundKey[(i - Nk) * 4 + 0] ^ tempa[0];
@@ -263,13 +254,10 @@ static void KeyExpansion(void)
 
 // This function adds the round key to state.
 // The round key is added to the state by an XOR function.
-static void AddRoundKey(uint8_t round)
-{
+static void AddRoundKey(uint8_t round) {
   uint8_t i,j;
-  for(i=0;i<4;++i)
-  {
-    for(j = 0; j < 4; ++j)
-    {
+  for(i=0;i<4;++i) {
+    for(j = 0; j < 4; ++j) {
       (*state)[i][j] ^= RoundKey[round * Nb * 4 + i * Nb + j];
     }
   }
@@ -277,14 +265,11 @@ static void AddRoundKey(uint8_t round)
 
 // The SubBytes Function Substitutes the values in the
 // state matrix with values in an S-box.
-static void SubBytes(void)
-{
+static void SubBytes(void) {
   uint8_t i, j;
-  for(i = 0; i < 4; ++i)
-  {
-    for(j = 0; j < 4; ++j)
-    {
-      (*state)[j][i] = getSBoxValue((*state)[j][i]);
+  for(i = 0; i < 4; ++i) {
+    for(j = 0; j < 4; ++j) {
+      (*state)[j][i] = sbox[(*state)[j][i]];
     }
   }
 }
@@ -292,8 +277,7 @@ static void SubBytes(void)
 // The ShiftRows() function shifts the rows in the state to the left.
 // Each row is shifted with different offset.
 // Offset = Row number. So the first row is not shifted.
-static void ShiftRows(void)
-{
+static void ShiftRows(void) {
   uint8_t temp;
 
   // Rotate first row 1 columns to left  
@@ -320,18 +304,15 @@ static void ShiftRows(void)
   (*state)[1][3] = temp;
 }
 
-static uint8_t xtime(uint8_t x)
-{
+static uint8_t xtime(uint8_t x) {
   return ((x<<1) ^ (((x>>7) & 1) * 0x1b));
 }
 
 // MixColumns function mixes the columns of the state matrix
-static void MixColumns(void)
-{
+static void MixColumns(void) {
   uint8_t i;
   uint8_t Tmp,Tm,t;
-  for(i = 0; i < 4; ++i)
-  {  
+  for(i = 0; i < 4; ++i) {  
     t   = (*state)[i][0];
     Tmp = (*state)[i][0] ^ (*state)[i][1] ^ (*state)[i][2] ^ (*state)[i][3] ;
     Tm  = (*state)[i][0] ^ (*state)[i][1] ; Tm = xtime(Tm);  (*state)[i][0] ^= Tm ^ Tmp ;
@@ -514,15 +495,6 @@ void AES128_ECB_decrypt(uint8_t* input, const uint8_t* key, uint8_t *output)
   InvCipher();
 }
 
-
-static void XorWithIv(uint8_t* buf)
-{
-  uint8_t i;
-  for(i = 0; i < KEYLEN; ++i)
-  {
-    buf[i] ^= Iv[i];
-  }
-}
 
 static void test_encrypt_ecb(void)
 {
