@@ -217,25 +217,14 @@ static void KeyExpansion(void) {
 
 // This function adds the round key to state.
 // The round key is added to the state by an XOR function.
-static void AddRoundKey(uint8_t round) {
-  uint8_t i,j;
-  for(i=0;i<4;++i) {
-    for(j = 0; j < 4; ++j) {
-      (*state)[i][j] ^= RoundKey[round * Nb * 4 + i * Nb + j];
-    }
-  }
-}
-
-// The SubBytes Function Substitutes the values in the
-// state matrix with values in an S-box.
-static void SubBytes(void) {
-  uint8_t i, j;
-  for(i = 0; i < 4; ++i) {
-    for(j = 0; j < 4; ++j) {
-      (*state)[j][i] = sbox[(*state)[j][i]];
-    }
-  }
-}
+//static void AddRoundKey(uint8_t round) {
+//  uint8_t i,j;
+//  for(i = 0;i < 4;++i) {
+//    for(j = 0; j < 4; ++j) {
+//      (*state)[i][j] ^= RoundKey[round * Nb * 4 + i * Nb + j];
+//    }
+//  }
+//}
 
 // The ShiftRows() function shifts the rows in the state to the left.
 // Each row is shifted with different offset.
@@ -267,6 +256,9 @@ static void ShiftRows(void) {
   (*state)[1][3] = temp;
 }
 
+
+
+
 static uint8_t xtime(uint8_t x) {
   return ((x<<1) ^ (((x>>7) & 1) * 0x1b));
 }
@@ -277,11 +269,22 @@ static void MixColumns(void) {
   uint8_t Tmp,Tm,t;
   for(i = 0; i < 4; ++i) {  
     t   = (*state)[i][0];
-    Tmp = (*state)[i][0] ^ (*state)[i][1] ^ (*state)[i][2] ^ (*state)[i][3] ;
-    Tm  = (*state)[i][0] ^ (*state)[i][1] ; Tm = xtime(Tm);  (*state)[i][0] ^= Tm ^ Tmp ;
-    Tm  = (*state)[i][1] ^ (*state)[i][2] ; Tm = xtime(Tm);  (*state)[i][1] ^= Tm ^ Tmp ;
-    Tm  = (*state)[i][2] ^ (*state)[i][3] ; Tm = xtime(Tm);  (*state)[i][2] ^= Tm ^ Tmp ;
-    Tm  = (*state)[i][3] ^ t ;        Tm = xtime(Tm);  (*state)[i][3] ^= Tm ^ Tmp ;
+    Tmp = (*state)[i][0] ^ (*state)[i][1] ^ (*state)[i][2] ^ (*state)[i][3];
+    Tm = (*state)[i][0] ^ (*state)[i][1]; 
+    Tm = xtime(Tm);
+    (*state)[i][0] ^= Tm ^ Tmp;
+
+    Tm  = (*state)[i][1] ^ (*state)[i][2]; 
+    Tm = xtime(Tm);
+    (*state)[i][1] ^= Tm ^ Tmp;
+
+    Tm  = (*state)[i][2] ^ (*state)[i][3];
+    Tm = xtime(Tm);  
+    (*state)[i][2] ^= Tm ^ Tmp;
+    
+    Tm  = (*state)[i][3] ^ t;
+    Tm = xtime(Tm);
+    (*state)[i][3] ^= Tm ^ Tmp;
   }
 }
 
@@ -355,33 +358,63 @@ static void InvShiftRows(void) {
 
 // Cipher is the main function that encrypts the PlainText.
 static void Cipher(void) {
-  uint8_t round = 0;
-
-  // Add the First round key to the state before starting the rounds.
-  AddRoundKey(0); 
-  
+    uint8_t round = 0;
+    uint8_t i,j;
+    
+    // Add the First round key to the state before starting the rounds.
+    // AddRoundKey(0)
+    for(i = 0;i < 4;++i) {
+        for(j = 0; j < 4; ++j) {
+            // Add first round key
+            (*state)[i][j] = (*state)[i][j] ^ RoundKey[i * Nb + j];
+            // Subbytes();
+            (*state)[i][j] = sbox[(*state)[i][j]];
+        }
+    }
+ 
+ 
   // There will be Nr rounds.
   // The first Nr-1 rounds are identical.
   // These Nr-1 rounds are executed in the loop below.
-  for(round = 1; round < Nr; ++round) {
-    SubBytes();
-    ShiftRows();
-    MixColumns();
-    AddRoundKey(round);
+    for(round = 1; round < Nr; ++round) {
+        ShiftRows();
+        MixColumns();
+        // AddRoundKey(round)
+        for(i = 0;i < 4; ++i) {
+            for(j = 0; j < 4; ++j) {
+                // AddRoundKey()
+                (*state)[i][j] ^= RoundKey[round * Nb * 4 + i * Nb + j];
+                // Subbytes
+                (*state)[i][j] = sbox[(*state)[i][j]];
+            }
+        }
   }
   
   // The last round is given below.
   // The MixColumns function is not here in the last round.
-  SubBytes();
+  //SubBytes();
   ShiftRows();
-  AddRoundKey(Nr);
+  //AddRoundKey(Nr);
+  for(i = 0;i < 4;++i) {
+    for(j = 0; j < 4; ++j) {
+      (*state)[i][j] ^= RoundKey[Nr * Nb * 4 + i * Nb + j];
+    }
+  }
+
+
 }
 
 static void InvCipher(void) {
   uint8_t round = 0;
-
+ uint8_t i,j;
   // Add the First round key to the state before starting the rounds.
-  AddRoundKey(Nr); 
+  //AddRoundKey(Nr); 
+  for(i = 0;i < 4;++i) {
+    for(j = 0; j < 4; ++j) {
+      (*state)[i][j] ^= RoundKey[Nr * Nb * 4 + i * Nb + j];
+    }
+  }
+
 
   // There will be Nr rounds.
   // The first Nr-1 rounds are identical.
@@ -389,7 +422,11 @@ static void InvCipher(void) {
   for(round=Nr-1; round > 0; round--) {
     InvShiftRows();
     InvSubBytes();
-    AddRoundKey(round);
+    for(i = 0;i < 4;++i) {
+        for(j = 0; j < 4; ++j) {
+            (*state)[i][j] ^= RoundKey[round * Nb * 4 + i * Nb + j];
+        }
+    }
     InvMixColumns();
   }
   
@@ -397,7 +434,14 @@ static void InvCipher(void) {
   // The MixColumns function is not here in the last round.
   InvShiftRows();
   InvSubBytes();
-  AddRoundKey(0);
+    // Add ROund Key (0)
+  for(i = 0;i < 4;++i) {
+    for(j = 0; j < 4; ++j) {
+      (*state)[i][j] ^= RoundKey[i * Nb + j];
+    }
+  }
+
+
 }
 
 static void BlockCopy(uint8_t* output, uint8_t* input) {
