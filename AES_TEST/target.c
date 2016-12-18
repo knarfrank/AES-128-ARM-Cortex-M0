@@ -16,14 +16,6 @@
 // The number of rounds in AES Cipher.
 #define Nr 10
 
-// jcallan@github points out that declaring Multiply as a function 
-// reduces code size considerably with the Keil ARM compiler.
-// See this link for more information: https://github.com/kokke/tiny-AES128-C/pull/3
-#ifndef MULTIPLY_AS_A_FUNCTION
-  #define MULTIPLY_AS_A_FUNCTION 0
-#endif
-
-
 uint8_t target_reg_k[ 16 ];
 uint8_t target_reg_m[ 16 ];
 uint8_t target_reg_c[ 16 ];
@@ -312,7 +304,6 @@ static void MixColumns(void) {
 }
 
 // Multiply is used to multiply numbers in the field GF(2^8)
-#if MULTIPLY_AS_A_FUNCTION
 static uint8_t Multiply(uint8_t x, uint8_t y) {
   return (((y & 1) * x) ^
        ((y>>1 & 1) * xtime(x)) ^
@@ -320,15 +311,6 @@ static uint8_t Multiply(uint8_t x, uint8_t y) {
        ((y>>3 & 1) * xtime(xtime(xtime(x)))) ^
        ((y>>4 & 1) * xtime(xtime(xtime(xtime(x))))));
   }
-#else
-#define Multiply(x, y)                                \
-      (  ((y & 1) * x) ^                              \
-      ((y>>1 & 1) * xtime(x)) ^                       \
-      ((y>>2 & 1) * xtime(xtime(x))) ^                \
-      ((y>>3 & 1) * xtime(xtime(xtime(x)))) ^         \
-      ((y>>4 & 1) * xtime(xtime(xtime(xtime(x))))))   \
-
-#endif
 
 // MixColumns function mixes the columns of the state matrix.
 // The method used to multiply may be difficult to understand for the inexperienced.
