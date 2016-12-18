@@ -189,7 +189,7 @@ static void KeyExpansion(void) {
 
   // All other round keys are found from the previous round keys.
   for(; i < 44; ++i) {
-    tempa[0] = RoundKey[(i-1) * 4];
+    tempa[0] = RoundKey[(i-1) * 4 + 0];
     tempa[1] = RoundKey[(i-1) * 4 + 1];
     tempa[2] = RoundKey[(i-1) * 4 + 2];
     tempa[3] = RoundKey[(i-1) * 4 + 3];
@@ -197,19 +197,13 @@ static void KeyExpansion(void) {
     if (i % Nk == 0) {
         // This function rotates the 4 bytes in a word to the left once.
         // [a0,a1,a2,a3] becomes [a1,a2,a3,a0]
+        
+        // Rotate and sbox in one swoop
         k = tempa[0];
-        tempa[0] = tempa[1];
-        tempa[1] = tempa[2];
-        tempa[2] = tempa[3];
-        tempa[3] = k;
-
-        // SubWord() is a function that takes a four-byte input word and 
-        // applies the S-box to each of the four bytes to produce an output word.
-
-        tempa[0] = sbox[tempa[0]];
-        tempa[1] = sbox[tempa[1]];
-        tempa[2] = sbox[tempa[2]];
-        tempa[3] = sbox[tempa[3]];
+        tempa[0] = sbox[tempa[1]];
+        tempa[1] = sbox[tempa[2]];
+        tempa[2] = sbox[tempa[3]];
+        tempa[3] = sbox[k];
 
         tempa[0] =  tempa[0] ^ Rcon[i/Nk];
     }
