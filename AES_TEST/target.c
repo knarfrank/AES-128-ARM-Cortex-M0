@@ -1,20 +1,5 @@
-/*****************************************************************************/
-/* Includes:                                                                 */
-/*****************************************************************************/
 #include <stdint.h>
 #include "target.h"
-
-/*****************************************************************************/
-/* Defines:                                                                  */
-/*****************************************************************************/
-// The number of columns comprising a state in AES. This is a constant in AES. Value=4
-#define Nb 4
-// The number of 32 bit words in a key.
-#define Nk 4
-// Key length in bytes [128 bit]
-#define KEYLEN 16
-// The number of rounds in AES Cipher.
-#define Nr 10
 
 uint8_t target_reg_k[ 16 ];
 uint8_t target_reg_m[ 16 ];
@@ -98,10 +83,6 @@ void print(char* string, int n) {
     target_uart_wr((char)'\n');
 }
 
-/*****************************************************************************/
-/* Private variables:                                                        */
-/*****************************************************************************/
-// state - array holding the intermediate results during decryption.
 typedef uint8_t state_t[4][4];
 static state_t* state;
 
@@ -164,7 +145,7 @@ static void KeyExpansion(void) {
   uint8_t tempa[4]; // Used for the column/row operations
   
   // The first round key is the key itself.
-  for(i = 0; i < Nk; ++i) {
+  for(i = 0; i < 4; ++i) {
     RoundKey[(i * 4) + 0] = Key[(i * 4) + 0];
     RoundKey[(i * 4) + 1] = Key[(i * 4) + 1];
     RoundKey[(i * 4) + 2] = Key[(i * 4) + 2];
@@ -178,7 +159,7 @@ static void KeyExpansion(void) {
     tempa[2] = RoundKey[(i-1) * 4 + 2];
     tempa[3] = RoundKey[(i-1) * 4 + 3];
     
-    if (i % Nk == 0) {
+    if (i % 4 == 0) {
         // This function rotates the 4 bytes in a word to the left once.
         // [a0,a1,a2,a3] becomes [a1,a2,a3,a0]
         
@@ -189,13 +170,13 @@ static void KeyExpansion(void) {
         tempa[2] = sbox[tempa[3]];
         tempa[3] = sbox[k];
 
-        tempa[0] =  tempa[0] ^ Rcon[(i/Nk) - 1];
+        tempa[0] =  tempa[0] ^ Rcon[(i/4) - 1];
     }
 
-    RoundKey[i * 4 + 0] = RoundKey[(i - Nk) * 4 + 0] ^ tempa[0];
-    RoundKey[i * 4 + 1] = RoundKey[(i - Nk) * 4 + 1] ^ tempa[1];
-    RoundKey[i * 4 + 2] = RoundKey[(i - Nk) * 4 + 2] ^ tempa[2];
-    RoundKey[i * 4 + 3] = RoundKey[(i - Nk) * 4 + 3] ^ tempa[3];
+    RoundKey[i * 4 + 0] = RoundKey[(i - 4) * 4 + 0] ^ tempa[0];
+    RoundKey[i * 4 + 1] = RoundKey[(i - 4) * 4 + 1] ^ tempa[1];
+    RoundKey[i * 4 + 2] = RoundKey[(i - 4) * 4 + 2] ^ tempa[2];
+    RoundKey[i * 4 + 3] = RoundKey[(i - 4) * 4 + 3] ^ tempa[3];
   }
 }
 
@@ -205,7 +186,7 @@ static void AddRoundKey(uint8_t round) {
   uint8_t i,j;
   for(i=0;i<4;++i) {
     for(j = 0; j < 4; ++j) {
-      (*state)[i][j] ^= RoundKey[round * Nb * 4 + i * Nb + j];
+      (*state)[i][j] ^= RoundKey[round * 4 * 4 + i * 4 + j];
     }
   }
 }
@@ -347,7 +328,7 @@ static void Cipher(void) {
   // There will be Nr rounds.
   // The first Nr-1 rounds are identical.
   // These Nr-1 rounds are executed in the loop below.
-  for(round = 1; round < Nr; ++round) {
+  for(round = 1; round < 10; ++round) {
     SubBytes();
     ShiftRows();
     MixColumns();
@@ -358,19 +339,19 @@ static void Cipher(void) {
   // The MixColumns function is not here in the last round.
   SubBytes();
   ShiftRows();
-  AddRoundKey(Nr);
+  AddRoundKey(10);
 }
 
 static void InvCipher(void) {
   uint8_t round = 0;
 
   // Add the First round key to the state before starting the rounds.
-  AddRoundKey(Nr); 
+  AddRoundKey(10); 
 
   // There will be Nr rounds.
   // The first Nr-1 rounds are identical.
   // These Nr-1 rounds are executed in the loop below.
-  for(round=Nr-1; round > 0; round--) {
+  for(round=10-1; round > 0; round--) {
     InvShiftRows();
     InvSubBytes();
     AddRoundKey(round);
@@ -386,7 +367,7 @@ static void InvCipher(void) {
 
 static void BlockCopy(uint8_t* output, uint8_t* input) {
   uint8_t i;
-  for (i=0;i<KEYLEN;++i) {
+  for (i = 0; i < 16; ++i) {
     output[i] = input[i];
   }
 }
