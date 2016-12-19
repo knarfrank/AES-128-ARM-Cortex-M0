@@ -155,7 +155,7 @@ static const uint8_t rsbox[256] =
 // The round constant word array, Rcon[i], contains the values given by 
 // x to th e power (i-1) being powers of x (x is denoted as {02}) in the field GF(2^8)
 // Note that i starts at 1, not 0).
-static const uint8_t Rcon[255] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36};
+static const uint8_t Rcon[10] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36};
 
 
 // This function produces Nb(Nr+1) round keys. The round keys are used in each round to decrypt the states. 
