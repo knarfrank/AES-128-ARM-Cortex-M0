@@ -83,7 +83,7 @@ void print(char* string, int n) {
     target_uart_wr((char)'\n');
 }
 
-typedef uint8_t state_t[4][4];
+typedef uint8_t state_t[16];
 static state_t* state;
 
 // The lookup-tables are marked const so they can be placed in read-only storage instead of RAM
@@ -108,18 +108,6 @@ static const uint8_t sbox[256] =   {
   0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
   0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 };
 
-static uint8_t xtime(uint8_t x);
-
-// The SubBytes Function Substitutes the values in the
-// state matrix with values in an S-box.
-static void SubBytes(void) {
-  uint8_t i, j;
-  for(i = 0; i < 4; ++i) {
-    for(j = 0; j < 4; ++j) {
-      (*state)[j][i] = sbox[(*state)[j][i]];
-    }
-  }
-}
 
 // The ShiftRows() function shifts the rows in the state to the left.
 // Each row is shifted with different offset.
@@ -128,27 +116,27 @@ static void ShiftRows(void) {
   uint8_t temp;
 
   // Rotate first row 1 columns to left  
-  temp           = (*state)[0][1];
-  (*state)[0][1] = (*state)[1][1];
-  (*state)[1][1] = (*state)[2][1];
-  (*state)[2][1] = (*state)[3][1];
-  (*state)[3][1] = temp;
+  temp           = (*state)[1];
+  (*state)[1] = (*state)[5];
+  (*state)[5] = (*state)[9];
+  (*state)[9] = (*state)[13];
+  (*state)[13] = temp;
 
   // Rotate second row 2 columns to left  
-  temp           = (*state)[0][2];
-  (*state)[0][2] = (*state)[2][2];
-  (*state)[2][2] = temp;
+  temp           = (*state)[2];
+  (*state)[2] = (*state)[10];
+  (*state)[10] = temp;
 
-  temp       = (*state)[1][2];
-  (*state)[1][2] = (*state)[3][2];
-  (*state)[3][2] = temp;
+  temp       = (*state)[6];
+  (*state)[6] = (*state)[14];
+  (*state)[14] = temp;
 
   // Rotate third row 3 columns to left
-  temp       = (*state)[0][3];
-  (*state)[0][3] = (*state)[3][3];
-  (*state)[3][3] = (*state)[2][3];
-  (*state)[2][3] = (*state)[1][3];
-  (*state)[1][3] = temp;
+  temp       = (*state)[3];
+  (*state)[3] = (*state)[15];
+  (*state)[15] = (*state)[11];
+  (*state)[11] = (*state)[7];
+  (*state)[7] = temp;
 }
 
 static uint8_t xtime(uint8_t x) {
@@ -159,30 +147,34 @@ static uint8_t xtime(uint8_t x) {
 static void MixColumns(void) {
   uint8_t i;
   uint8_t Tmp,Tm,t;
-  for(i = 0; i < 4; ++i) {  
-    t   = (*state)[i][0];
-    Tmp = (*state)[i][0] ^ (*state)[i][1] ^ (*state)[i][2] ^ (*state)[i][3] ;
-    Tm  = (*state)[i][0] ^ (*state)[i][1] ; Tm = xtime(Tm);  (*state)[i][0] ^= Tm ^ Tmp ;
-    Tm  = (*state)[i][1] ^ (*state)[i][2] ; Tm = xtime(Tm);  (*state)[i][1] ^= Tm ^ Tmp ;
-    Tm  = (*state)[i][2] ^ (*state)[i][3] ; Tm = xtime(Tm);  (*state)[i][2] ^= Tm ^ Tmp ;
-    Tm  = (*state)[i][3] ^ t ;        Tm = xtime(Tm);  (*state)[i][3] ^= Tm ^ Tmp ;
+  for(i = 0; i < 16; i += 4) {
+    t   = (*state)[i];
+    Tmp = (*state)[i] ^ (*state)[i+1] ^ (*state)[i+2] ^ (*state)[i+3] ;
+    Tm  = (*state)[i] ^ (*state)[i+1]; 
+    Tm = xtime(Tm);  
+    (*state)[i+0] ^= Tm ^ Tmp;
+    Tm  = (*state)[i+1] ^ (*state)[i+2] ; Tm = xtime(Tm);  (*state)[i+1] ^= Tm ^ Tmp ;
+    Tm  = (*state)[i+2] ^ (*state)[i+3] ; Tm = xtime(Tm);  (*state)[i+2] ^= Tm ^ Tmp ;
+    Tm  = (*state)[i+3] ^ t ;        Tm = xtime(Tm);  (*state)[i+3] ^= Tm ^ Tmp ;
   }
 }
 
 // Cipher is the main function that encrypts the PlainText.
 static void Cipher(uint8_t* key) {
     uint8_t round = 0;
-    uint8_t i, j;
+    uint8_t i;
     uint8_t rcon = 0x01;
     
     for(round = 0; round < 10; ++round) {
-        for(i=0;i<4;++i) {
-            for(j = 0; j < 4; ++j) {
-                (*state)[i][j] ^= key[i*4 + j];
-            }
+        // Add Key
+        for(i = 0; i < 16; ++i) {
+            (*state)[i] ^= key[i];
+        }
+        // SubBytes
+        for(i = 0; i < 16; ++i) {
+            (*state)[i] = sbox[(*state)[i]];
         }
 
-        SubBytes();
         ShiftRows();
 
         if(round < 9) {
@@ -202,15 +194,8 @@ static void Cipher(uint8_t* key) {
         rcon = xtime(rcon);     
     }
   
-  // The last round is given below.
-  // The MixColumns function is not here in the last round.
-  //SubBytes();
-  //ShiftRows();
-  //AddRoundKey(10);
-    for(i=0;i<4;++i) {
-        for(j = 0; j < 4; ++j) {
-            (*state)[i][j] ^= key[i*4 + j];
-        }
+    for(i=0; i<16; ++i) {
+        (*state)[i] ^= key[i];
     }
 }
 static void BlockCopy(uint8_t* output, uint8_t* input) {
