@@ -14,75 +14,77 @@ uint8_t target_reg_k[ 16 ];
 uint8_t target_reg_m[ 16 ];
 uint8_t target_reg_c[ 16 ];
 
-SYSCON_t* SYSCON = ( SYSCON_t* )( 0x40048000 );
- IOCON_t*  IOCON = (  IOCON_t* )( 0x40044000 );
-  GPIO_t*  GPIO0 = (   GPIO_t* )( 0x50000000 );
-  GPIO_t*  GPIO1 = (   GPIO_t* )( 0x50010000 );
-  GPIO_t*  GPIO2 = (   GPIO_t* )( 0x50020000 );
-  GPIO_t*  GPIO3 = (   GPIO_t* )( 0x50030000 );
-  UART_t*   UART = (   UART_t* )( 0x40008000 );
+SYSCON_t* SYSCON = (SYSCON_t*)(0x40048000);
+IOCON_t* IOCON   = (IOCON_t*)(0x40044000);
+GPIO_t* GPIO0    = (GPIO_t*)(0x50000000);
+GPIO_t* GPIO1    = (GPIO_t*)(0x50010000);
+GPIO_t* GPIO2    = (GPIO_t*)(0x50020000);
+GPIO_t* GPIO3    = (GPIO_t*)(0x50030000);
+UART_t* UART     = (UART_t*)(0x40008000);
 
 void target_init() {
-  SYSCON->SYSAHBCLKCTRL |=  (   1 <<  6 ); // Table  21: enable GPIO  clock
-  SYSCON->SYSAHBCLKCTRL |=  (   1 << 12 ); // Table  21: enable UART  clock
-  SYSCON->SYSAHBCLKCTRL |=  (   1 << 16 ); // Table  21: enable IOCON clock
+    SYSCON->SYSAHBCLKCTRL |= (1 <<  6); // Table  21: enable GPIO  clock
+    SYSCON->SYSAHBCLKCTRL |= (1 << 12); // Table  21: enable UART  clock
+    SYSCON->SYSAHBCLKCTRL |= (1 << 16); // Table  21: enable IOCON clock
 
-  // Section 13.5.15, set baud rate
-  //
-  // rate = clk / ( 16 * ( 256 * U0DLM + U0DLL ) * ( 1 + ( DivAddVal / MulVal ) ) )
-  //
-  // st. for a 12 MHz clock frequency we want, per Table 201, to set
-  // DivAddVal = 0, MulVal = 1, U0DLM = 0 and U0DLL = 78.
+    // Section 13.5.15, set baud rate
+    //
+    // rate = clk / ( 16 * ( 256 * U0DLM + U0DLL ) * ( 1 + ( DivAddVal / MulVal ) ) )
+    //
+    // st. for a 12 MHz clock frequency we want, per Table 201, to set
+    // DivAddVal = 0, MulVal = 1, U0DLM = 0 and U0DLL = 78.
+    SYSCON->UARTCLKDIV =  1;
 
+    UART->U0LCR       |=  (0x1 << 7); // Table 193:  enable divisor latch access
+    UART->U0FDR        =  (0x0 << 0); // Table 200: set DivAddVal
+    UART->U0FDR       |=  (0x1 << 4); // Table 200: set    MulVal
+    UART->U0DLM        =  0;          // Table 187: set divisor latch MSBs
+    UART->U0DLL        =  78;         // Table 187: set divisor latch LSBs
+    UART->U0LCR       &= ~(0x1 << 7); // Table 193: disable divisor latch access
 
-  SYSCON->UARTCLKDIV     =  1;
+    UART->U0LCR       |=  (0x3 << 0); // Table 193: 8 data bits
+    UART->U0LCR       &= ~(0x1 << 3); // Table 193: no parity
+    UART->U0LCR       &= ~(0x1 << 2); // Table 193: 1 stop bits
 
-  UART->U0LCR           |=  ( 0x1 <<  7 ); // Table 193:  enable divisor latch access
-  UART->U0FDR            =  ( 0x0 <<  0 ); // Table 200: set DivAddVal
-  UART->U0FDR           |=  ( 0x1 <<  4 ); // Table 200: set    MulVal
-  UART->U0DLM            =  0;             // Table 187: set divisor latch MSBs
-  UART->U0DLL            = 78;             // Table 187: set divisor latch LSBs
-  UART->U0LCR           &= ~( 0x1 <<  7 ); // Table 193: disable divisor latch access
+    IOCON->PIO0_8      =  (0x0 << 0); // Table  80: configure PIO0_8 as GPIO
+    IOCON->PIO0_9      =  (0x0 << 0); // Table  81: configure PIO0_9 as GPIO
+    IOCON->PIO1_6      =  (0x1 << 0); // Table  97: configure PIO1_6 as UART RxD
+    IOCON->PIO1_7      =  (0x1 << 0); // Table  98: configure PIO1_7 as UART TxD
 
-  UART->U0LCR           |=  ( 0x3 <<  0 ); // Table 193: 8 data bits
-  UART->U0LCR           &= ~( 0x1 <<  3 ); // Table 193: no parity
-  UART->U0LCR           &= ~( 0x1 <<  2 ); // Table 193: 1 stop bits
-
-  IOCON->PIO0_8          =  ( 0x0 <<  0 ); // Table  80: configure PIO0_8 as GPIO
-  IOCON->PIO0_9          =  ( 0x0 <<  0 ); // Table  81: configure PIO0_9 as GPIO
-  IOCON->PIO1_6          =  ( 0x1 <<  0 ); // Table  97: configure PIO1_6 as UART RxD
-  IOCON->PIO1_7          =  ( 0x1 <<  0 ); // Table  98: configure PIO1_7 as UART TxD
-
-  GPIO0->GPIOnDIR        =  ( 0x1 <<  8 ); // Table 175: PIO0_8 => trigger
-  GPIO0->GPIOnDATA      &= ~( 0x1 <<  8 );
-  GPIO0->GPIOnDIR       |=  ( 0x1 <<  9 ); // Table 175: PIO0_9 => user
-  GPIO0->GPIOnDATA      &= ~( 0x1 <<  9 );
+    GPIO0->GPIOnDIR    =  (0x1 << 8); // Table 175: PIO0_8 => trigger
+    GPIO0->GPIOnDATA  &= ~(0x1 << 8);
+    GPIO0->GPIOnDIR   |=  (0x1 << 9); // Table 175: PIO0_9 => user
+    GPIO0->GPIOnDATA  &= ~(0x1 << 9);
 }
 
 uint8_t target_uart_rd(void) {
-  while( !( UART->U0LSR & ( 0x1 << 0 ) ) ) { /* spin */ }
-  return (UART->U0RBR);
+    while(!(UART->U0LSR & (0x1 << 0))) {
+        /* spin */
+    }
+    return (UART->U0RBR);
 }
 
 void target_uart_wr(uint8_t x) {
-  while( !( UART->U0LSR & ( 0x1 << 5 ) ) ) { /* spin */ }
-        ( UART->U0THR = x );
+    while(!(UART->U0LSR & (0x1 << 5))) {
+        /* spin */
+    }
+    ( UART->U0THR = x );
 }
 
 void target_led_trig(bool x) {
-  if(x) {
-    GPIO0->GPIOnDATA |=  ( 0x1 << 8 );
-  } else {
-    GPIO0->GPIOnDATA &= ~( 0x1 << 8 );
-  }
+    if(x) {
+        GPIO0->GPIOnDATA |=  (0x1 << 8);
+    } else {
+        GPIO0->GPIOnDATA &= ~(0x1 << 8);
+    }
 }
 
-void target_led_user( bool x ) {
-  if(x) {
-    GPIO0->GPIOnDATA |=  ( 0x1 << 9 );
-  } else {
-    GPIO0->GPIOnDATA &= ~( 0x1 << 9 );
-  }
+void target_led_user(bool x) {
+    if(x) {
+        GPIO0->GPIOnDATA |=  (0x1 << 9);
+    } else {
+        GPIO0->GPIOnDATA &= ~(0x1 << 9);
+    }
 }
 #endif
 
@@ -120,57 +122,64 @@ static const uint8_t sbox[256] =   {
   0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
   0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
   0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
-  0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 };
+  0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
+};
 
 
-// The ShiftRows() function shifts the rows in the state to the left.
-// Each row is shifted with different offset.
-// Offset = Row number. So the first row is not shifted.
 static void ShiftRows(void) {
-  uint8_t temp;
+    uint8_t temp;
 
-  // Rotate first row 1 columns to left
-  temp           = (*state)[1];
-  (*state)[1] = (*state)[5];
-  (*state)[5] = (*state)[9];
-  (*state)[9] = (*state)[13];
-  (*state)[13] = temp;
+    // Rotate first row 1 columns to left
+    temp         = (*state)[1];
+    (*state)[1]  = (*state)[5];
+    (*state)[5]  = (*state)[9];
+    (*state)[9]  = (*state)[13];
+    (*state)[13] = temp;
 
-  // Rotate second row 2 columns to left
-  temp           = (*state)[2];
-  (*state)[2] = (*state)[10];
-  (*state)[10] = temp;
+    // Rotate second row 2 columns to left
+    temp         = (*state)[2];
+    (*state)[2]  = (*state)[10];
+    (*state)[10] = temp;
 
-  temp       = (*state)[6];
-  (*state)[6] = (*state)[14];
-  (*state)[14] = temp;
+    temp         = (*state)[6];
+    (*state)[6]  = (*state)[14];
+    (*state)[14] = temp;
 
-  // Rotate third row 3 columns to left
-  temp       = (*state)[3];
-  (*state)[3] = (*state)[15];
-  (*state)[15] = (*state)[11];
-  (*state)[11] = (*state)[7];
-  (*state)[7] = temp;
+    // Rotate third row 3 columns to left
+    temp         = (*state)[3];
+    (*state)[3]  = (*state)[15];
+    (*state)[15] = (*state)[11];
+    (*state)[11] = (*state)[7];
+    (*state)[7]  = temp;
 }
 
 static uint8_t xtime(uint8_t x) {
-  return ((x<<1) ^ (((x>>7) & 1) * 0x1b));
+    return ((x<<1) ^ (((x>>7) & 1) * 0x1b));
 }
 
 // MixColumns function mixes the columns of the state matrix
 static void MixColumns(void) {
-  uint8_t i;
-  uint8_t Tmp,Tm,t;
-  for(i = 0; i < 16; i += 4) {
-    t   = (*state)[i];
-    Tmp = (*state)[i] ^ (*state)[i+1] ^ (*state)[i+2] ^ (*state)[i+3] ;
-    Tm  = (*state)[i] ^ (*state)[i+1];
-    Tm = xtime(Tm);
-    (*state)[i+0] ^= Tm ^ Tmp;
-    Tm  = (*state)[i+1] ^ (*state)[i+2] ; Tm = xtime(Tm);  (*state)[i+1] ^= Tm ^ Tmp ;
-    Tm  = (*state)[i+2] ^ (*state)[i+3] ; Tm = xtime(Tm);  (*state)[i+2] ^= Tm ^ Tmp ;
-    Tm  = (*state)[i+3] ^ t ;        Tm = xtime(Tm);  (*state)[i+3] ^= Tm ^ Tmp ;
-  }
+    uint8_t i;
+    uint8_t Tmp,Tm,t;
+    for(i = 0; i < 16; i += 4) {
+        t   = (*state)[i];
+        Tmp = (*state)[i] ^ (*state)[i+1] ^ (*state)[i+2] ^ (*state)[i+3] ;
+        Tm  = (*state)[i] ^ (*state)[i+1];
+        Tm = xtime(Tm);
+        (*state)[i+0] ^= Tm ^ Tmp;
+
+        Tm  = (*state)[i+1] ^ (*state)[i+2];
+        Tm = xtime(Tm);
+        (*state)[i+1] ^= Tm ^ Tmp;
+
+        Tm  = (*state)[i+2] ^ (*state)[i+3];
+        Tm = xtime(Tm);
+        (*state)[i+2] ^= Tm ^ Tmp;
+
+        Tm  = (*state)[i+3] ^ t;
+        Tm = xtime(Tm);
+        (*state)[i+3] ^= Tm ^ Tmp;
+    }
 }
 
 // Cipher is the main function that encrypts the PlainText.
@@ -222,30 +231,30 @@ static void BlockCopy(uint8_t* output, uint8_t* input) {
 
 
 void AES128_ECB_encrypt(uint8_t* input, uint8_t* key, uint8_t* output) {
-  // Copy input to output, and work in-memory on output
-  BlockCopy(output, input);
-  state = (state_t*)output;
+    // Copy input to output, and work in-memory on output
+    BlockCopy(output, input);
+    state = (state_t*)output;
 
-  Cipher(key);
+    Cipher(key);
 }
 
-static void test_encrypt_ecb(void)
-{
-  uint8_t key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
-  uint8_t in[]  = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a};
-  uint8_t out[] = {0x3a, 0xd7, 0x7b, 0xb4, 0x0d, 0x7a, 0x36, 0x60, 0xa8, 0x9e, 0xca, 0xf3, 0x24, 0x66, 0xef, 0x97};
-  uint8_t buffer[16];
+static void test_encrypt_ecb(void) {
+    uint8_t key[] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
+    uint8_t in[]  = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a};
+    uint8_t out[] = {0x3a, 0xd7, 0x7b, 0xb4, 0x0d, 0x7a, 0x36, 0x60, 0xa8, 0x9e, 0xca, 0xf3, 0x24, 0x66, 0xef, 0x97};
+    uint8_t buffer[16];
 
-  AES128_ECB_encrypt(in, key, buffer);
+    AES128_ECB_encrypt(in, key, buffer);
 
-  if(0 == memcmp((char*) out, (char*) buffer, 16)) {
-    print("SUCCESS!", 8);
-  } else {
-    print("FAILURE!", 8);
-  }
+    if(0 == memcmp((char*) out, (char*) buffer, 16)) {
+        print("SUCCESS!", 8);
+    } else {
+        print("FAILURE!", 8);
+    }
 }
 
 int main( int argc, char* argv[] ) {
+
 #if ARM_BOARD
     target_init();
 #endif
@@ -276,8 +285,6 @@ int main( int argc, char* argv[] ) {
         target_led_user( 1 );
 
 #endif
-
     }
-
     return 0;
 }
