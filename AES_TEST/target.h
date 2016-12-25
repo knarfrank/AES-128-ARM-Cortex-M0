@@ -1,3 +1,5 @@
+#define ARM_BOARD 0
+
 #ifndef __TARGET_H
 #define __TARGET_H
 
@@ -11,6 +13,8 @@
 #define WO volatile       /* write only */
 #define RW volatile       /* read/write */
 #define WR volatile       /* write/read */
+
+#if ARM_BOARD
 
 extern uint8_t target_reg_k[ 16 ];
 extern uint8_t target_reg_m[ 16 ];
@@ -51,7 +55,7 @@ typedef struct {
           RW uint32_t SSP1CLKDIV;        // 0x009C          : SPI1   clock divider
           RO RSVD(  6, 0x00A0, 0x00CC ); // 0x00A0...0x00CC : reserved
           RW uint32_t WDTCLKSEL;         // 0x00D0          : watchdog   clock source select
-          RW uint32_t WDTCLKUEN;         // 0x00D4          : watchdog   clock source update enable 
+          RW uint32_t WDTCLKUEN;         // 0x00D4          : watchdog   clock source update enable
           RW uint32_t WDTCLKDIV;         // 0x00D8          : watchdog   clock source divider
           RO RSVD(  7, 0x00DC, 0x00DC ); // 0x00DC          : reserved
           RW uint32_t CLKOUTSEL;         // 0x00E0          : CLKOUT     clock source select
@@ -81,7 +85,7 @@ typedef struct {
 
 // Chapter  7, Section  7.4, Table  56: I/O configuration
 
-typedef struct { 
+typedef struct {
           RW uint32_t PIO2_6;            // 0x0000          : I/O configuration for pin PIO2_6
           RO RSVD(  0, 0x0004, 0x0004 ); // 0x0004          : reserved
           RW uint32_t PIO2_0;            // 0x0008          : I/O configuration for pin PIO2_0
@@ -183,5 +187,7 @@ extern   GPIO_t*  GPIO1;
 extern   GPIO_t*  GPIO2;
 extern   GPIO_t*  GPIO3;
 extern   UART_t*   UART;
+
+#endif
 
 #endif

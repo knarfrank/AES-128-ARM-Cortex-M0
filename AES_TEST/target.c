@@ -1,6 +1,15 @@
+
+
 #include <stdint.h>
 #include "target.h"
 
+#if !ARM_BOARD
+    #include <stdio.h>
+#endif
+
+
+
+#if ARM_BOARD
 uint8_t target_reg_k[ 16 ];
 uint8_t target_reg_m[ 16 ];
 uint8_t target_reg_c[ 16 ];
@@ -21,7 +30,7 @@ void target_init() {
   // Section 13.5.15, set baud rate
   //
   // rate = clk / ( 16 * ( 256 * U0DLM + U0DLL ) * ( 1 + ( DivAddVal / MulVal ) ) )
-  // 
+  //
   // st. for a 12 MHz clock frequency we want, per Table 201, to set
   // DivAddVal = 0, MulVal = 1, U0DLM = 0 and U0DLL = 78.
 
@@ -75,19 +84,24 @@ void target_led_user( bool x ) {
     GPIO0->GPIOnDATA &= ~( 0x1 << 9 );
   }
 }
+#endif
 
 void print(char* string, int n) {
-    for(int i = 0; i < n; i++) {
-        target_uart_wr((char)string[i]);
-    }
-    target_uart_wr((char)'\n');
+    #if ARM_BOARD
+        for(int i = 0; i < n; i++) {
+            target_uart_wr((char)string[i]);
+        }
+        target_uart_wr((char)'\n');
+    #else
+        printf("%s\n", string);
+    #endif
 }
 
 typedef uint8_t state_t[16];
 static state_t* state;
 
 // The lookup-tables are marked const so they can be placed in read-only storage instead of RAM
-// The numbers below can be computed dynamically trading ROM for RAM - 
+// The numbers below can be computed dynamically trading ROM for RAM -
 // This can be useful in (embedded) bootloader applications, where ROM is often limited.
 static const uint8_t sbox[256] =   {
   //0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
@@ -115,14 +129,14 @@ static const uint8_t sbox[256] =   {
 static void ShiftRows(void) {
   uint8_t temp;
 
-  // Rotate first row 1 columns to left  
+  // Rotate first row 1 columns to left
   temp           = (*state)[1];
   (*state)[1] = (*state)[5];
   (*state)[5] = (*state)[9];
   (*state)[9] = (*state)[13];
   (*state)[13] = temp;
 
-  // Rotate second row 2 columns to left  
+  // Rotate second row 2 columns to left
   temp           = (*state)[2];
   (*state)[2] = (*state)[10];
   (*state)[10] = temp;
@@ -150,8 +164,8 @@ static void MixColumns(void) {
   for(i = 0; i < 16; i += 4) {
     t   = (*state)[i];
     Tmp = (*state)[i] ^ (*state)[i+1] ^ (*state)[i+2] ^ (*state)[i+3] ;
-    Tm  = (*state)[i] ^ (*state)[i+1]; 
-    Tm = xtime(Tm);  
+    Tm  = (*state)[i] ^ (*state)[i+1];
+    Tm = xtime(Tm);
     (*state)[i+0] ^= Tm ^ Tmp;
     Tm  = (*state)[i+1] ^ (*state)[i+2] ; Tm = xtime(Tm);  (*state)[i+1] ^= Tm ^ Tmp ;
     Tm  = (*state)[i+2] ^ (*state)[i+3] ; Tm = xtime(Tm);  (*state)[i+2] ^= Tm ^ Tmp ;
@@ -164,7 +178,7 @@ static void Cipher(uint8_t* key) {
     uint8_t round = 0;
     uint8_t i;
     uint8_t rcon = 0x01;
-    
+
     for(round = 0; round < 10; ++round) {
         // Add Key
         for(i = 0; i < 16; ++i) {
@@ -191,9 +205,9 @@ static void Cipher(uint8_t* key) {
             key[i] = key[i] ^ key[i-4];
         }
         // compute the next Rcon value
-        rcon = xtime(rcon);     
+        rcon = xtime(rcon);
     }
-  
+
     for(i=0; i<16; ++i) {
         (*state)[i] ^= key[i];
     }
@@ -232,10 +246,14 @@ static void test_encrypt_ecb(void)
 }
 
 int main( int argc, char* argv[] ) {
+#if ARM_BOARD
     target_init();
+#endif
     while(1) {
     	print("Encrypting...", 13);
     	test_encrypt_ecb();
+
+#if ARM_BOARD
 
         for( int i = 0; i < 1000000; i++ ) {
             asm( "nop" );
@@ -257,8 +275,9 @@ int main( int argc, char* argv[] ) {
         target_led_trig( 1 );
         target_led_user( 1 );
 
+#endif
+
     }
 
     return 0;
 }
-
