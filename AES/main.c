@@ -1,7 +1,7 @@
 
 
 #include <stdint.h>
-#include "target.h"
+#include "main.h"
 
 #if !ARM_BOARD
     #include <stdio.h>

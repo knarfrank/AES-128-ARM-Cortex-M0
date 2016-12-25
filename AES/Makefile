@@ -1,9 +1,9 @@
- INCLUDES  = . 
+ INCLUDES  = .
 
- SOURCES   = ./target.c 
+ SOURCES   = ./main.c
  SOURCES  += ./target.S
 
- HEADERS   = ./target.h 
+ HEADERS   = ./main.h
 
  SCRIPTS   = ./target.ld
 
@@ -13,8 +13,8 @@
  TARGETS  += ./target.hex
 
  CC_PATHS  = $(patsubst %, -I %, ${INCLUDES})
- CC_FLAGS  = -Wall -std=gnu99 -Os $(patsubst %, -T %, ${SCRIPTS}) -mcpu=cortex-m0 -mthumb -nostartfiles 
- CC_LIBS   = 
+ CC_FLAGS  = -Wall -std=gnu99 -Os $(patsubst %, -T %, ${SCRIPTS}) -mcpu=cortex-m0 -mthumb -nostartfiles
+ CC_LIBS   =
 
 %.elf %.map : ${SOURCES} ${HEADERS} ${SCRIPTS}
 	@arm-none-eabi-gcc ${CC_PATHS} ${CC_FLAGS} -Wl,-Map=${*}.map -o ${*}.elf ${SOURCES} ${CC_LIBS}
